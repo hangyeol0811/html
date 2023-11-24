@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메인 페이지</title>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #333;
+            color: #fff;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        section {
+            max-width: 600px;
+            margin: 2rem auto;
+            background-color: #fff;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            border-bottom: 1px solid #ccc;
+            padding: 0.5rem;
+        }
+
+        form {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        input,
+        textarea {
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #166cea;
+            color: #fff;
+            padding: 0.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>우리의 멋진 메인 페이지</h1>
+    </header>
+    <section>
+        <h2>최신 소식</h2>
+        <ul id="ticket-list"></ul>
+
+        <!-- 티켓 작성 폼 -->
+        <form id="submit-form">
+            <h2>문의하기</h2>
+            <label for="username">이름:</label>
+            <input type="text" id="username" name="username" required>
+            <label for="message">문의 내용:</label>
+            <textarea id="message" name="message" required></textarea>
+            <button type="submit">문의 제출</button>
+        </form>
+    </section>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        // 서버에서 새로운 티켓이 생성되었을 때 처리
+        socket.on('newTicket', (ticket) => {
+            // 새로운 티켓 정보를 화면에 추가
+            const formattedDate = formatDate(ticket.createdAt);
+            const newTicketHtml = `<li>${ticket.username}: ${ticket.message} (작성일: ${formattedDate})</li>`;
+            $('#ticket-list').append(newTicketHtml);
+        });
+
+        // 문의 제출 폼 제출 시 이벤트 처리
+        $('#submit-form').submit(function (event) {
+            event.preventDefault();
+
+            const username = $('#username').val();
+            const message = $('#message').val();
+
+            // 서버에 문의 제출
+            $.ajax({
+                type: 'POST',
+                url: '/submit',
+                data: { username, message },
+                success: function (response) {
+                    // 성공 시, 새로운 티켓을 소켓을 통해 전파하므로 별도의 업데이트가 필요 없음
+                    console.log('문의가 제출되었습니다.');
+                },
+                error: function (error) {
+                    console.error('문의 제출 오류:', error.responseText);
+                }
+            });
+
+            // 폼 비우기
+            $('#username').val('');
+            $('#message').val('');
+        });
+
+        // 날짜 포맷 함수
+        function formatDate(dateString) {
+            const options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+            return new Date(dateString).toLocaleDateString(undefined, options);
+        }
+
+        // 초기 티켓 목록 로딩
+        $.get('/', function (tickets) {
+            tickets.forEach(function (ticket) {
+                const formattedDate = formatDate(ticket.createdAt);
+                const ticketHtml = `<li>${ticket.username}: ${ticket.message} (작성일: ${formattedDate})</li>`;
+                $('#ticket-list').append(ticketHtml);
+            });
+        });
+    </script>
+</body>
+</html>
